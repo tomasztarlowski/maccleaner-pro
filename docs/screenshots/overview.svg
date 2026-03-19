@@ -1,0 +1,35 @@
+<svg width="1280" height="800" viewBox="0 0 1280 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="800" rx="24" fill="#0B1220"/>
+  <rect x="0" y="0" width="260" height="800" fill="#111A2E"/>
+  <text x="24" y="52" fill="#D7E3FF" font-size="28" font-family="Arial">MacCleaner Pro</text>
+  <g fill="#91A4D4" font-size="18" font-family="Arial">
+    <text x="24" y="120">Overview</text>
+    <text x="24" y="158">Large files</text>
+    <text x="24" y="196">Duplicates</text>
+    <text x="24" y="234">App leftovers</text>
+    <text x="24" y="272">Developer</text>
+    <text x="24" y="310">History</text>
+  </g>
+  <rect x="286" y="24" width="970" height="90" rx="16" fill="#16233F"/>
+  <text x="312" y="58" fill="#F2F6FF" font-size="24" font-family="Arial">Overview</text>
+  <text x="312" y="88" fill="#9EB3E6" font-size="16" font-family="Arial">Smart cleanup summary with health score and actionable recommendations</text>
+  <rect x="286" y="134" width="230" height="130" rx="14" fill="#1D2C50"/>
+  <rect x="536" y="134" width="230" height="130" rx="14" fill="#1D2C50"/>
+  <rect x="786" y="134" width="230" height="130" rx="14" fill="#1D2C50"/>
+  <rect x="1036" y="134" width="220" height="130" rx="14" fill="#1D2C50"/>
+  <g fill="#DDE7FF" font-size="18" font-family="Arial">
+    <text x="306" y="172">Large files</text><text x="306" y="212" font-size="34">42</text>
+    <text x="556" y="172">Duplicates</text><text x="556" y="212" font-size="34">18</text>
+    <text x="806" y="172">Leftovers</text><text x="806" y="212" font-size="34">27</text>
+    <text x="1056" y="172">Health score</text><text x="1056" y="212" font-size="34">78/100</text>
+  </g>
+  <rect x="286" y="286" width="970" height="490" rx="16" fill="#16233F"/>
+  <text x="312" y="325" fill="#EAF0FF" font-size="20" font-family="Arial">Top findings</text>
+  <g fill="#9CB0DF" font-size="16" font-family="Menlo, monospace">
+    <text x="312" y="368">24.82 GB   /Desktop/TORRENTY/Joker....mkv</text>
+    <text x="312" y="402">18.96 GB   /Library/Containers/com.utmapp.../Linux 2.img</text>
+    <text x="312" y="436">17.71 GB   ~/.ollama/models/blobs/sha256-...</text>
+    <text x="312" y="470">14.92 GB   /Desktop/TORRENTY/How.To.Train....mp4</text>
+    <text x="312" y="504">10.00 GB   /Library/Application Support/Claude/.../rootfs.img</text>
+  </g>
+</svg>

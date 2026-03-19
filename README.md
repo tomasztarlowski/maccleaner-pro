@@ -2,6 +2,10 @@
 
 Beautiful, native macOS cleaner app built with SwiftUI.
 
+[![CI](https://github.com/tomasztarlowski/maccleaner-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/tomasztarlowski/maccleaner-pro/actions/workflows/ci.yml)
+[![Release DMG](https://github.com/tomasztarlowski/maccleaner-pro/actions/workflows/release.yml/badge.svg)](https://github.com/tomasztarlowski/maccleaner-pro/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 MacCleaner Pro helps you quickly find:
 - large files,
 - duplicate files,
@@ -9,6 +13,14 @@ MacCleaner Pro helps you quickly find:
 - developer junk (Docker, Xcode, simulators, package caches).
 
 It includes safe cleanup to Trash, scan history, profile-based scanning, report export, and bilingual UI (Polish/English).
+
+## 🖼️ Screenshots
+
+### Overview
+![Overview](docs/screenshots/overview.svg)
+
+### Duplicates
+![Duplicates](docs/screenshots/duplicates.svg)
 
 ## ✨ Features
 
@@ -27,7 +39,8 @@ It includes safe cleanup to Trash, scan history, profile-based scanning, report 
 ## 🖥️ Requirements
 
 - macOS 13+
-- Apple Silicon / Intel (Swift toolchain installed for local builds)
+- Apple Silicon / Intel
+- Swift toolchain (for local builds)
 
 ## 🚀 Quick Start
 
@@ -54,18 +67,22 @@ Artifacts:
 2. Drag **MacCleaner Pro.app** to Applications.
 3. Launch from Applications.
 
-## 🛡️ Safety Notes
+## ⚠️ Known limitations
+
+- Leftovers detection is heuristic-based and may produce false positives.
+- Duplicate scan intentionally skips extremely large files in some edge cases for stability.
+- Scanning huge disks can take time (progress/cancel UX improvements are planned).
+- This app is currently unsigned/not notarized for App Store distribution.
+
+## 🛡️ Safety notes
 
 - Cleanup uses Trash, not permanent delete.
 - Always review selected files before cleanup.
 - For sensitive folders, use the **Cautious** profile.
 
-## 🧭 Roadmap
+## 🗺️ Changelog
 
-- Scan progress + cancel button
-- Additional hardening guards for critical paths
-- Improved confidence scoring for leftovers
-- Enhanced trend charts
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## 👥 Authors
 

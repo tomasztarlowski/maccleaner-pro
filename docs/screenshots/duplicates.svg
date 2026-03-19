@@ -1,0 +1,20 @@
+<svg width="1280" height="800" viewBox="0 0 1280 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="800" rx="24" fill="#0B1220"/>
+  <rect x="0" y="0" width="260" height="800" fill="#111A2E"/>
+  <text x="24" y="52" fill="#D7E3FF" font-size="28" font-family="Arial">MacCleaner Pro</text>
+  <text x="24" y="196" fill="#E2ECFF" font-size="18" font-family="Arial">Duplicates</text>
+  <rect x="286" y="24" width="970" height="90" rx="16" fill="#16233F"/>
+  <text x="312" y="58" fill="#F2F6FF" font-size="24" font-family="Arial">Duplicates</text>
+  <text x="312" y="88" fill="#9EB3E6" font-size="16" font-family="Arial">Grouped by hash with potential recovery estimate</text>
+  <rect x="286" y="134" width="970" height="642" rx="16" fill="#16233F"/>
+  <g fill="#C7D6FA" font-size="16" font-family="Menlo, monospace">
+    <text x="312" y="180">Hash: 9d0f2a7c9c2e…   Potential recovery: 7.4 GB</text>
+    <text x="332" y="216">☑ 3.7 GB   /Users/tomek/Downloads/video_backup.mp4</text>
+    <text x="332" y="246">☐ 3.7 GB   /Users/tomek/Desktop/video_backup (copy).mp4</text>
+    <text x="312" y="300">Hash: 1b22aa90d19f…   Potential recovery: 1.2 GB</text>
+    <text x="332" y="336">☑ 1.2 GB   /Users/tomek/Documents/archive.zip</text>
+    <text x="332" y="366">☐ 1.2 GB   /Users/tomek/Downloads/archive (1).zip</text>
+  </g>
+  <rect x="946" y="726" width="290" height="38" rx="10" fill="#3B82F6"/>
+  <text x="987" y="751" fill="white" font-size="16" font-family="Arial">Move selected to Trash</text>
+</svg>
