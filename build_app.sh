@@ -4,7 +4,6 @@ set -euo pipefail
 APP_NAME="MacCleaner Pro"
 BUNDLE_ID="com.tomek.maccleanerpro"
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
-BUILD_DIR="$ROOT_DIR/.build/release"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
@@ -12,8 +11,8 @@ MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
 
 mkdir -p "$DIST_DIR"
-
 swift build -c release --package-path "$ROOT_DIR"
+BUILD_DIR="$(swift build -c release --package-path "$ROOT_DIR" --show-bin-path)"
 
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
@@ -49,10 +48,3 @@ codesign --force --sign - "$APP_DIR"
 codesign --verify --strict "$APP_DIR"
 
 echo "✅ App bundle ready: $APP_DIR"
-
-echo "📦 Creating DMG..."
-DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
-rm -f "$DMG_PATH"
-hdiutil create -volname "$APP_NAME" -srcfolder "$APP_DIR" -ov -format UDZO "$DMG_PATH" >/dev/null
-
-echo "✅ DMG ready: $DMG_PATH"

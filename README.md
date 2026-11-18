@@ -17,9 +17,9 @@ The interface is available in English and Polish. Use **Options** to choose cate
 
 Developer data can include active Docker volumes or simulator data. Review those files and possible app leftovers before cleanup. Reports can include full local paths. The size shown for selected files is their logical size. Actual space reclaimed can differ, especially with hard links or snapshots.
 
-## Download and build
+## Build from source
 
-The [Releases page](https://github.com/tomasztarlowski/maccleaner-pro/releases) contains prebuilt downloads. The published v3.0.0 DMG is Apple Silicon only. To try the current source, build and open a local app on macOS 13 or later with a Swift 5.10 or newer toolchain.
+The [Releases page](https://github.com/tomasztarlowski/maccleaner-pro/releases) contains release notes. To run the app, build it from source on macOS 13 or later with a Swift 5.10 or newer toolchain.
 
 ```sh
 swift test
@@ -27,6 +27,6 @@ bash build_app.sh
 open "dist/MacCleaner Pro.app"
 ```
 
-The build creates an app and DMG for the build machine's architecture. It uses an ad hoc signature and is not notarized. Some locations may be unreadable under macOS privacy restrictions. The duplicate scan skips files smaller than 10 MB or larger than 2 GiB and caps the candidate list.
+The script creates a locally signed app in `dist/` for the build machine. Some locations may be unreadable under macOS privacy restrictions. The duplicate scan skips files smaller than 10 MB or larger than 2 GiB and caps the candidate list.
 
 See the [changelog](CHANGELOG.md) for release details. Created by Tomek and Jarvis and distributed under the [MIT License](LICENSE).

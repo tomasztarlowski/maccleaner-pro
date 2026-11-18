@@ -9,7 +9,7 @@
 - Narrowed the app-leftover scan to bundle-like identifiers and excluded apps found in standard Applications folders.
 - Validated folder paths before scanning and kept exported reports tied to the last completed scan.
 - Made scanner tests portable and added coverage for scan history, report export, developer data, and cleanup safeguards.
-- Updated the app bundle version and signed the local build ad hoc before DMG packaging.
+- Published release notes and kept the application available as a source build.
 
 ## 3.0.0
 
