@@ -36,14 +36,17 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$APP_NAME</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>2.0.0</string>
-  <key>CFBundleVersion</key><string>2</string>
+  <key>CFBundleShortVersionString</key><string>3.1.0</string>
+  <key>CFBundleVersion</key><string>3.1.0</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>
 PLIST
+
+codesign --force --sign - "$APP_DIR"
+codesign --verify --strict "$APP_DIR"
 
 echo "✅ App bundle ready: $APP_DIR"
 

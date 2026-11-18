@@ -5,6 +5,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     case english
 
     var id: String { rawValue }
+    var locale: Locale { Locale(identifier: self == .polish ? "pl_PL" : "en_US") }
 
     var label: String {
         switch self {
@@ -37,14 +38,6 @@ enum ScanProfile: String, CaseIterable, Identifiable {
         case .cautious: return 1500
         case .standard: return 800
         case .aggressive: return 400
-        }
-    }
-
-    var recommendationThresholdMB: Int {
-        switch self {
-        case .cautious: return 2500
-        case .standard: return 1200
-        case .aggressive: return 600
         }
     }
 }
@@ -121,10 +114,38 @@ struct ScanSnapshot: Identifiable, Codable {
     }
 }
 
+enum ScanCountUnit {
+    case file, group, category, copy
+
+    func label(_ count: Int, language: AppLanguage) -> String {
+        let english: (String, String)
+        let polish: (String, String, String)
+        switch self {
+        case .file: (english, polish) = (("file", "files"), ("plik", "pliki", "plików"))
+        case .group: (english, polish) = (("group", "groups"), ("grupa", "grupy", "grup"))
+        case .category: (english, polish) = (("category", "categories"), ("kategoria", "kategorie", "kategorii"))
+        case .copy: (english, polish) = (("copy", "copies"), ("kopia", "kopie", "kopii"))
+        }
+
+        let unit: String
+        switch language {
+        case .english:
+            unit = count == 1 ? english.0 : english.1
+        case .polish:
+            switch (count, count % 10, count % 100) {
+            case (1, _, _): unit = polish.0
+            case (_, 2...4, 12...14): unit = polish.2
+            case (_, 2...4, _): unit = polish.1
+            default: unit = polish.2
+            }
+        }
+        return "\(count) \(unit)"
+    }
+}
+
 extension Int64 {
-    var humanSize: String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: self)
+    func formattedSize(_ language: AppLanguage) -> String {
+        if self == 0 { return "0 B" }
+        return formatted(.byteCount(style: .file).locale(language.locale))
     }
 }

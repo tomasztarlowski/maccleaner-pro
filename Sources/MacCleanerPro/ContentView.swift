@@ -1,375 +1,460 @@
-import SwiftUI
 import AppKit
+import SwiftUI
+import UniformTypeIdentifiers
 
-enum AppSection: CaseIterable, Identifiable {
-    case overview
-    case largeFiles
-    case duplicates
-    case leftovers
-    case developer
-    case history
+private enum ScanSection: String, CaseIterable, Identifiable {
+    case overview, largeFiles, duplicates, leftovers, developer, history
 
-    var id: String { String(describing: self) }
+    var id: Self { self }
 
-    func title(_ lang: AppLanguage) -> String {
-        switch (self, lang) {
-        case (.overview, .polish): return "Przegląd"
-        case (.overview, .english): return "Overview"
-        case (.largeFiles, .polish): return "Duże pliki"
-        case (.largeFiles, .english): return "Large files"
-        case (.duplicates, .polish): return "Duplikaty"
-        case (.duplicates, .english): return "Duplicates"
-        case (.leftovers, .polish): return "Pozostałości"
-        case (.leftovers, .english): return "App leftovers"
-        case (.developer, .polish): return "Developer"
-        case (.developer, .english): return "Developer"
-        case (.history, .polish): return "Historia"
-        case (.history, .english): return "History"
+    func title(_ language: AppLanguage) -> String {
+        switch (self, language) {
+        case (.overview, .polish): "Przegląd"
+        case (.overview, .english): "Overview"
+        case (.largeFiles, .polish): "Duże pliki"
+        case (.largeFiles, .english): "Large files"
+        case (.duplicates, .polish): "Duplikaty"
+        case (.duplicates, .english): "Duplicates"
+        case (.leftovers, .polish): "Pozostałości"
+        case (.leftovers, .english): "App leftovers"
+        case (.developer, .polish): "Dane deweloperskie"
+        case (.developer, .english): "Developer data"
+        case (.history, .polish): "Historia"
+        case (.history, .english): "History"
         }
     }
 
     var icon: String {
         switch self {
-        case .overview: return "speedometer"
-        case .largeFiles: return "externaldrive.badge.exclamationmark"
-        case .duplicates: return "doc.on.doc"
-        case .leftovers: return "trash"
-        case .developer: return "hammer"
-        case .history: return "chart.xyaxis.line"
+        case .overview: "internaldrive"
+        case .largeFiles: "doc"
+        case .duplicates: "square.on.square"
+        case .leftovers: "shippingbox"
+        case .developer: "hammer"
+        case .history: "clock.arrow.circlepath"
         }
     }
 }
 
 struct ContentView: View {
-    @StateObject private var vm = AppViewModel()
-    @State private var section: AppSection = .overview
-    @State private var searchQuery = ""
+    @StateObject private var model = AppViewModel()
+    @State private var section: ScanSection? = .overview
+    @State private var search = ""
+    @State private var scanOptionsOpen = false
+    @State private var confirmsTrash = false
+    @State private var exportError: String?
 
-    private func tr(_ pl: String, _ en: String) -> String {
-        vm.language == .polish ? pl : en
-    }
+    private var currentSection: ScanSection { section ?? .overview }
 
     var body: some View {
         NavigationSplitView {
-            List(AppSection.allCases, selection: $section) { s in
-                Label(s.title(vm.language), systemImage: s.icon).tag(s)
+            List(ScanSection.allCases, selection: $section) { destination in
+                Label(destination.title(model.language), systemImage: destination.icon)
+                    .tag(destination)
             }
-            .navigationTitle("MacCleaner Pro")
+            .listStyle(.sidebar)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Picker(tr("Język", "Language"), selection: $model.language) {
+                    ForEach(AppLanguage.allCases) { language in Text(language.label).tag(language) }
+                }
+                .padding(14)
+            }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 215, max: 255)
         } detail: {
-            ZStack {
-                LinearGradient(colors: [Color.blue.opacity(0.08), Color.purple.opacity(0.05), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-
-                VStack(spacing: 14) {
-                    topBar
-                    controlBar
-
-                    switch section {
-                    case .overview: overviewSection
-                    case .largeFiles: largeFilesSection
-                    case .duplicates: duplicatesSection
-                    case .leftovers: leftoversSection
-                    case .developer: developerSection
-                    case .history: historySection
-                    }
-
-                    footerBar
+            VStack(spacing: 0) {
+                workspaceHeader
+                Divider()
+                switch currentSection {
+                case .overview: overview
+                case .largeFiles: largeFiles
+                case .duplicates: duplicates
+                case .leftovers: leftovers
+                case .developer: developerData
+                case .history: history
                 }
-                .padding(18)
+                Divider()
+                selectionBar
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(nsColor: .windowBackgroundColor))
         }
-        .frame(minWidth: 1240, minHeight: 790)
-    }
-
-    private var topBar: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("MacCleaner Pro")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                Text(tr("Skaner dużych plików, duplikatów, pozostałości i dev-junk", "Large file, duplicate, leftovers and dev-junk scanner"))
-                    .foregroundStyle(.secondary)
+        .frame(minWidth: 850, minHeight: 570)
+        .onChange(of: section) { _ in search = "" }
+        .alert(tr("Przenieść zaznaczone pliki do Kosza?", "Move selected files to Trash?"), isPresented: $confirmsTrash) {
+            Button(tr("Anuluj", "Cancel"), role: .cancel) {}
+            Button(tr("Przenieś do Kosza", "Move to Trash"), role: .destructive) {
+                model.moveSelectedToTrash()
             }
-            Spacer()
-            HStack(spacing: 8) {
-                Text("\(tr("Wskaźnik zdrowia", "Health score")): \(vm.cleanupHealthScore)/100")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(vm.cleanupHealthScore > 75 ? .green : vm.cleanupHealthScore > 45 ? .orange : .red)
-                statusPill
-            }
+        } message: {
+            Text("\(model.selectedPaths.count) • \(model.totalSelectedSize.formattedSize(model.language))")
+        }
+        .alert(tr("Nie udało się wyeksportować raportu", "Could not export the report"), isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
     }
 
-    private var statusPill: some View {
-        HStack(spacing: 8) {
-            Circle().fill(vm.isScanning ? Color.orange : Color.green).frame(width: 10, height: 10)
-            Text(vm.status).font(.subheadline.weight(.medium))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
-    }
-
-    private var controlBar: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(tr("Język", "Language")).font(.caption).foregroundStyle(.secondary)
-                    Picker("Language", selection: $vm.language) {
-                        ForEach(AppLanguage.allCases) { lang in
-                            Text(lang.label).tag(lang)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .frame(width: 130, alignment: .leading)
+    private var workspaceHeader: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(currentSection.title(model.language))
+                        .font(.system(size: 27, weight: .semibold))
+                        .accessibilityAddTraits(.isHeader)
+                    Text(sectionDescription)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(tr("Profil czyszczenia", "Cleanup profile")).font(.caption).foregroundStyle(.secondary)
-                    Picker("Profil", selection: $vm.scanProfile) {
-                        ForEach(ScanProfile.allCases) { profile in
-                            Text(profile.label(vm.language)).tag(profile)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 360)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(tr("Folder skanowania", "Scan folder")).font(.caption).foregroundStyle(.secondary)
-                    TextField("/Users/...", text: $vm.scanPath)
-                        .textFieldStyle(.roundedBorder)
-                }
-
                 Spacer()
+                Button { exportReport() } label: {
+                    Label(tr("Eksportuj raport", "Export report"), systemImage: "square.and.arrow.up")
+                        .labelStyle(.iconOnly)
+                        .frame(width: 24)
+                }
+                .help(tr("Zapisz raport tekstowy", "Save a text report"))
+                .disabled(!model.hasScanResults || model.isScanning)
 
-                Button(vm.isScanning ? tr("Skanowanie…", "Scanning…") : tr("Skanuj teraz", "Scan now")) { vm.runFullScan() }
-                    .disabled(vm.isScanning)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                Button { model.runFullScan() } label: {
+                    Label(tr("Skanuj", "Scan"), systemImage: "magnifyingglass")
+                        .padding(.horizontal, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(model.isScanning)
             }
 
-            HStack(spacing: 12) {
-                Toggle("Duże pliki", isOn: $vm.scanLargeFilesEnabled)
-                Toggle(tr("Duplikaty", "Duplicates"), isOn: $vm.scanDuplicatesEnabled)
-                Toggle("Pozostałości", isOn: $vm.scanLeftoversEnabled)
-                Toggle("Developer junk", isOn: $vm.scanDevJunkEnabled)
-                Spacer()
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Szukaj po ścieżce...", text: $searchQuery)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 320)
+            HStack(spacing: 9) {
+                Image(systemName: "folder").foregroundStyle(.secondary)
+                TextField(tr("Folder skanowania", "Scan folder"), text: $model.scanPath)
+                    .textFieldStyle(.plain)
+                    .font(.system(.callout, design: .monospaced))
+                    .accessibilityLabel(tr("Folder skanowania", "Scan folder"))
+                    .onSubmit { model.runFullScan() }
+                Button(tr("Wybierz…", "Choose…"), action: chooseFolder)
+                Divider().frame(height: 17).padding(.horizontal, 2)
+                Button { scanOptionsOpen.toggle() } label: {
+                    Label(tr("Opcje", "Options"), systemImage: "slider.horizontal.3")
+                }
+                .popover(isPresented: $scanOptionsOpen, arrowEdge: .bottom) { scanOptions }
             }
+            .disabled(model.isScanning)
+            .padding(8)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.quaternary))
         }
-        .padding(14)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 23)
+        .padding(.vertical, 18)
     }
 
-    private var overviewSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                metricCard(title: "Duże pliki", value: "\(filteredLargeFiles.count)", subtitle: filteredLargeFiles.reduce(0) { $0 + $1.size }.humanSize, icon: "externaldrive.badge.exclamationmark", tint: .blue)
-                metricCard(title: "Duplikaty", value: "\(filteredDuplicateGroups.count)", subtitle: filteredDuplicateGroups.reduce(0) { $0 + $1.totalWaste }.humanSize + " do odzyskania", icon: "doc.on.doc", tint: .orange)
-                metricCard(title: "Pozostałości", value: "\(filteredLeftoverGroups.count)", subtitle: filteredLeftoverGroups.reduce(0) { $0 + $1.totalSize }.humanSize, icon: "trash", tint: .purple)
-                metricCard(title: "Dev Junk", value: "\(filteredDevJunkGroups.count)", subtitle: filteredDevJunkGroups.reduce(0) { $0 + $1.totalSize }.humanSize, icon: "hammer", tint: .pink)
+    private var scanOptions: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            Picker(tr("Profil", "Profile"), selection: $model.scanProfile) {
+                ForEach(ScanProfile.allCases) { profile in
+                    Text(profile.label(model.language)).tag(profile)
+                }
             }
+            Text(tr("Duże pliki od \(model.minLargeFileMB) MB", "Large files from \(model.minLargeFileMB) MB"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Divider()
+            Toggle(ScanSection.largeFiles.title(model.language), isOn: $model.scanLargeFilesEnabled)
+            Toggle(ScanSection.duplicates.title(model.language), isOn: $model.scanDuplicatesEnabled)
+            Toggle(ScanSection.leftovers.title(model.language), isOn: $model.scanLeftoversEnabled)
+            Toggle(ScanSection.developer.title(model.language), isOn: $model.scanDevJunkEnabled)
+            Text(tr("Pozostałości i dane deweloperskie są sprawdzane w katalogu domowym.", "App leftovers and developer data are scanned in your home folder."))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 287)
+    }
 
-            cardContainer(title: "Rekomendowany odzysk", subtitle: "Na podstawie profilu i rozmiaru") {
-                Text(vm.totalPotentialRecovery().humanSize)
-                    .font(.system(size: 44, weight: .bold, design: .rounded))
+    private var sectionDescription: String {
+        switch currentSection {
+        case .overview: tr("Sprawdź, co zajmuje miejsce na dysku.", "See what is taking up disk space.")
+        case .largeFiles: tr("Pliki powyżej progu wybranego do skanowania.", "Files above the chosen scan threshold.")
+        case .duplicates: tr("Pliki o identycznej zawartości.", "Files with identical contents.")
+        case .leftovers: tr("Możliwe pozostałości. Sprawdź każdy plik przed usunięciem.", "Possible leftovers. Review each file before removing it.")
+        case .developer: tr("Pamięci podręczne, dane Docker i pliki symulatorów.", "Caches, Docker data, and simulator files.")
+        case .history: tr("Podsumowania ostatnich 30 skanów.", "Summaries of the last 30 scans.")
+        }
+    }
+
+    private var overview: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                summary(.largeFiles, size: model.largeFiles.reduce(0) { $0 + $1.size }, count: model.largeFiles.count, unit: .file)
+                Divider().frame(height: 54)
+                summary(.duplicates, size: model.duplicateGroups.reduce(0) { $0 + $1.totalWaste }, count: model.duplicateGroups.count, unit: .group)
+                Divider().frame(height: 54)
+                summary(.leftovers, size: model.leftoverGroups.reduce(0) { $0 + $1.totalSize }, count: model.leftoverGroups.count, unit: .group)
+                Divider().frame(height: 54)
+                summary(.developer, size: model.devJunkGroups.reduce(0) { $0 + $1.totalSize }, count: model.devJunkGroups.count, unit: .category)
             }
+            .padding(.vertical, 17)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.quaternary))
+            .padding(.horizontal, 23)
+            .padding(.top, 22)
+            .padding(.bottom, 15)
 
-            cardContainer(title: "Największe pliki", subtitle: "Top 12") {
-                List(filteredLargeFiles.prefix(12), id: \.path) { row(file: $0) }
+            if model.largeFiles.isEmpty {
+                emptyState(
+                    symbol: "internaldrive",
+                    title: model.hasScanResults ? tr("Brak dużych plików", "No large files") : tr("Rozpocznij od skanu", "Start with a scan"),
+                    message: model.hasScanResults
+                        ? tr("Pozostałe wyniki znajdziesz w kategoriach powyżej.", "Use the categories above to review other results.")
+                        : tr("Wybierz folder i zakres skanowania.", "Choose a folder and what to scan.")
+                )
+            } else {
+                Text(tr("Największe pliki", "Largest files"))
+                    .font(.headline)
+                    .padding(.horizontal, 23)
+                    .padding(.vertical, 12)
+                List(Array(model.largeFiles.prefix(12)), id: \.path) { file in fileRow(file) }
                     .listStyle(.inset)
             }
         }
     }
 
-    private var largeFilesSection: some View {
-        cardContainer(title: "Duże pliki", subtitle: "Pliki od \(vm.minLargeFileMB) MB") {
-            List(filteredLargeFiles, id: \.path) { row(file: $0) }.listStyle(.inset)
+    private func summary(_ destination: ScanSection, size: Int64, count: Int, unit: ScanCountUnit) -> some View {
+        Button { section = destination } label: {
+            VStack(alignment: .leading, spacing: 7) {
+                Label(destination.title(model.language), systemImage: destination.icon)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(model.hasScanResults || count > 0 ? size.formattedSize(model.language) : "—")
+                    .font(.title2.weight(.semibold).monospacedDigit())
+                    .lineLimit(1)
+                Text(unit.label(count, language: model.language))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var largeFiles: some View {
+        let files = model.largeFiles.filter { matches($0) }
+        return searchableResults(isEmpty: files.isEmpty) {
+            List(files, id: \.path) { file in fileRow(file) }
         }
     }
 
-    private var duplicatesSection: some View {
-        cardContainer(title: "Duplikaty", subtitle: "Identyczne pliki po hashu") {
+    private var duplicates: some View {
+        let groups = model.duplicateGroups.filter { group in group.files.contains { matches($0) } }
+        return searchableResults(isEmpty: groups.isEmpty) {
             List {
-                ForEach(filteredDuplicateGroups) { group in
-                    Section("Hash: \(group.hash) • odzysk: \(group.totalWaste.humanSize)") {
-                        ForEach(group.files, id: \.path) { row(file: $0) }
+                ForEach(groups) { group in
+                    Section {
+                        ForEach(group.files.filter { matches($0) }, id: \.path) { file in fileRow(file) }
+                    } header: {
+                        let copies = ScanCountUnit.copy.label(group.files.count, language: model.language)
+                        Text(tr("\(copies) · \(group.totalWaste.formattedSize(model.language)) do odzyskania", "\(copies) · \(group.totalWaste.formattedSize(model.language)) recoverable"))
                     }
                 }
             }
-            .listStyle(.inset)
         }
     }
 
-    private var leftoversSection: some View {
-        cardContainer(title: "Pozostałości po aplikacjach", subtitle: "Szybkie pełne usuwanie po grupie") {
+    private var leftovers: some View {
+        let groups = model.leftoverGroups.filter { group in group.files.contains { matches($0, group: group.appName) } }
+        return searchableResults(isEmpty: groups.isEmpty) {
             List {
-                ForEach(filteredLeftoverGroups) { group in
+                ForEach(groups) { group in
+                    let files = group.files.filter { matches($0, group: group.appName) }
                     Section {
-                        ForEach(group.files, id: \.path) { row(file: $0) }
+                        ForEach(files, id: \.path) { file in fileRow(file) }
                     } header: {
                         HStack {
-                            Text("\(group.appName) • \(group.totalSize.humanSize)")
+                            Text(group.appName)
                             Spacer()
-                            Button("Usuń grupę") { vm.removeLeftoverGroup(group) }
-                                .buttonStyle(.bordered)
+                            Button(tr("Zaznacz widoczne", "Select visible")) {
+                                model.selectedPaths.formUnion(files.map(\.path))
+                            }
+                            .buttonStyle(.borderless)
+                            .disabled(model.isScanning)
                         }
                     }
                 }
             }
-            .listStyle(.inset)
         }
     }
 
-    private var developerSection: some View {
-        cardContainer(title: "Developer junk", subtitle: "Docker, Xcode, simulator, cache menedżerów pakietów") {
+    private var developerData: some View {
+        let groups = model.devJunkGroups.filter { group in group.files.contains { matches($0, group: group.category) } }
+        return searchableResults(isEmpty: groups.isEmpty) {
             List {
-                ForEach(filteredDevJunkGroups) { group in
-                    Section("\(group.category) • \(group.totalSize.humanSize)") {
-                        ForEach(group.files.prefix(80), id: \.path) { row(file: $0) }
+                ForEach(groups) { group in
+                    Section("\(group.category) · \(group.totalSize.formattedSize(model.language))") {
+                        ForEach(group.files.filter { matches($0, group: group.category) }, id: \.path) { file in fileRow(file) }
                     }
                 }
             }
-            .listStyle(.inset)
         }
     }
 
-    private var historySection: some View {
-        cardContainer(title: "Historia skanów", subtitle: "Ostatnie 30 uruchomień") {
-            if vm.history.isEmpty {
-                Text("Brak historii — uruchom pierwszy skan.")
-                    .foregroundStyle(.secondary)
+    private var history: some View {
+        Group {
+            if model.history.isEmpty {
+                emptyState(symbol: "clock", title: tr("Brak skanów w historii", "No scan history"), message: nil)
             } else {
-                List(vm.history) { s in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(s.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(.headline)
-                        Text("Potencjalny odzysk: \(s.totalPotentialRecovery.humanSize) • Duże: \(s.largeFilesSize.humanSize) • Dev: \(s.devJunkSize.humanSize)")
-                            .foregroundStyle(.secondary)
+                List(model.history) { scan in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(scan.date.formatted(.dateTime.day().month(.abbreviated).year().hour().minute().locale(model.language.locale))).font(.headline)
+                            let groups = ScanCountUnit.group.label(scan.duplicateGroupsCount, language: model.language)
+                            Text(tr("Duże pliki: \(scan.largeFilesCount)  ·  Duplikaty: \(groups)", "Large files: \(scan.largeFilesCount)  ·  Duplicates: \(groups)"))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(scan.duplicateWaste.formattedSize(model.language))
+                            .font(.callout.monospacedDigit())
+                            .help(tr("Rozmiar kopii duplikatów", "Size of extra duplicate copies"))
                     }
+                    .padding(.vertical, 6)
                 }
                 .listStyle(.inset)
             }
         }
     }
 
-    private var footerBar: some View {
-        HStack {
-            Text("\(tr("Zaznaczone", "Selected")): \(vm.selectedPaths.count) • \(vm.totalSelectedSize.humanSize)")
-                .font(.subheadline.weight(.medium))
-            Text("•")
-                .foregroundStyle(.secondary)
-            Text(tr("Twórca: Tomek + Jarvis", "Created by: Tomek + Jarvis"))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Eksportuj raport") { exportReport() }
-            Button("Wyczyść") { vm.clearSelection() }
-            Button(tr("Zaznacz rekomendowane", "Select recommended")) { vm.selectRecommended() }
-            Button("Przenieś do Kosza") { vm.moveSelectedToTrash() }
-                .disabled(vm.selectedPaths.isEmpty || vm.isScanning)
-                .buttonStyle(.borderedProminent)
+    private func searchableResults<Results: View>(isEmpty: Bool, @ViewBuilder results: () -> Results) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField(tr("Filtruj według ścieżki", "Filter by path"), text: $search)
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 23)
+            .padding(.vertical, 11)
+            Divider()
+
+            if isEmpty {
+                emptyState(
+                    symbol: currentSection.icon,
+                    title: tr("Brak wyników", "No results"),
+                    message: search.isEmpty ? nil : tr("Zmień frazę wyszukiwania.", "Try a different filter.")
+                )
+            } else {
+                results().listStyle(.inset)
+            }
         }
-        .padding(14)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    @ViewBuilder
-    private func row(file: FileItem) -> some View {
-        HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { vm.selectedPaths.contains(file.path) },
-                set: { _ in vm.toggle(file.path) }
-            ))
-            .toggleStyle(.checkbox)
-            .frame(width: 24)
+    private func fileRow(_ file: FileItem) -> some View {
+        HStack(spacing: 11) {
+            Toggle(isOn: Binding(
+                get: { model.selectedPaths.contains(file.path) },
+                set: { _ in model.toggle(file.path) }
+            )) { Text(file.url.lastPathComponent) }
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+                .disabled(model.isScanning)
 
-            Text(file.size.humanSize)
-                .font(.system(.body, design: .monospaced))
-                .frame(width: 100, alignment: .leading)
-
-            Text(file.path).lineLimit(1).truncationMode(.middle)
+            Image(systemName: "doc").foregroundStyle(.secondary).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(file.url.lastPathComponent).font(.callout.weight(.medium)).lineLimit(1)
+                Text(file.url.deletingLastPathComponent().path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
             Spacer()
+            Text(file.size.formattedSize(model.language)).font(.callout.monospacedDigit()).foregroundStyle(.secondary)
         }
+        .padding(.vertical, 4)
+        .help(file.path)
         .contextMenu {
-            Button("Pokaż w Finder") { NSWorkspace.shared.activateFileViewerSelecting([file.url]) }
-            Button("Kopiuj ścieżkę") {
+            Button(tr("Pokaż w Finderze", "Show in Finder")) {
+                NSWorkspace.shared.activateFileViewerSelecting([file.url])
+            }
+            Button(tr("Kopiuj ścieżkę", "Copy path")) {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(file.path, forType: .string)
             }
         }
     }
 
-    private func metricCard(title: String, value: String, subtitle: String, icon: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(title, systemImage: icon).font(.headline).foregroundStyle(tint)
-            Text(value).font(.system(size: 34, weight: .bold, design: .rounded))
-            Text(subtitle).foregroundStyle(.secondary).lineLimit(1)
+    private func emptyState(symbol: String, title: String, message: String?) -> some View {
+        VStack(spacing: 9) {
+            Image(systemName: symbol)
+                .font(.system(size: 25, weight: .light))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            Text(title).font(.headline)
+            if let message {
+                Text(message).font(.callout).foregroundStyle(.secondary)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func cardContainer<Content: View>(title: String, subtitle: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title3.bold())
-            Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
-            content()
+    private var selectionBar: some View {
+        HStack(spacing: 9) {
+            if model.isScanning { ProgressView().controlSize(.small) }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("\(tr("Zaznaczone", "Selected")): \(model.selectedPaths.count) · \(model.totalSelectedSize.formattedSize(model.language))")
+                    .font(.callout.weight(.medium).monospacedDigit())
+                Text(model.status).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(tr("Wyczyść", "Clear")) { model.clearSelection() }
+                .disabled(model.selectedPaths.isEmpty || model.isScanning)
+            if currentSection == .duplicates {
+                Button(tr("Zaznacz kopie", "Select extra copies")) { model.selectRecommended() }
+                    .disabled(model.isScanning || model.duplicateGroups.isEmpty)
+            }
+            Button { confirmsTrash = true } label: {
+                Label(tr("Do Kosza…", "Move to Trash…"), systemImage: "trash")
+            }
+            .disabled(model.selectedPaths.isEmpty || model.isScanning)
         }
-        .padding(14)
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, 23)
+        .padding(.vertical, 12)
+        .background(Color(nsColor: .controlBackgroundColor))
     }
 
-    private var filteredLargeFiles: [FileItem] {
-        guard !searchQuery.isEmpty else { return vm.largeFiles }
-        return vm.largeFiles.filter { $0.path.localizedCaseInsensitiveContains(searchQuery) }
+    private func matches(_ file: FileItem, group: String = "") -> Bool {
+        search.isEmpty || file.path.localizedCaseInsensitiveContains(search) || group.localizedCaseInsensitiveContains(search)
     }
 
-    private var filteredDuplicateGroups: [DuplicateGroup] {
-        guard !searchQuery.isEmpty else { return vm.duplicateGroups }
-        return vm.duplicateGroups.compactMap { g in
-            let matched = g.files.filter { $0.path.localizedCaseInsensitiveContains(searchQuery) }
-            return matched.isEmpty ? nil : DuplicateGroup(hash: g.hash, files: matched)
-        }
+    private func tr(_ polish: String, _ english: String) -> String {
+        model.language == .polish ? polish : english
     }
 
-    private var filteredLeftoverGroups: [LeftoverGroup] {
-        guard !searchQuery.isEmpty else { return vm.leftoverGroups }
-        return vm.leftoverGroups.compactMap { g in
-            let matched = g.files.filter { $0.path.localizedCaseInsensitiveContains(searchQuery) || g.appName.localizedCaseInsensitiveContains(searchQuery) }
-            return matched.isEmpty ? nil : LeftoverGroup(appName: g.appName, files: matched)
-        }
-    }
-
-    private var filteredDevJunkGroups: [DevJunkGroup] {
-        guard !searchQuery.isEmpty else { return vm.devJunkGroups }
-        return vm.devJunkGroups.compactMap { g in
-            let matched = g.files.filter { $0.path.localizedCaseInsensitiveContains(searchQuery) || g.category.localizedCaseInsensitiveContains(searchQuery) }
-            return matched.isEmpty ? nil : DevJunkGroup(category: g.category, files: matched)
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.directoryURL = URL(fileURLWithPath: model.scanPath)
+        panel.prompt = tr("Wybierz", "Choose")
+        panel.begin { response in
+            if response == .OK, let folder = panel.url { model.scanPath = folder.path }
         }
     }
 
     private func exportReport() {
         let panel = NSSavePanel()
-        panel.title = "Zapisz raport skanowania"
-        panel.nameFieldStringValue = "MacCleanerPro-raport.txt"
+        panel.title = tr("Zapisz raport skanowania", "Save scan report")
+        panel.nameFieldStringValue = "MacCleanerPro.txt"
         panel.allowedContentTypes = [.plainText]
-
-        if panel.runModal() == .OK, let url = panel.url {
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
             do {
-                try vm.saveReport(to: url)
-                vm.status = "Raport zapisany ✅"
+                try model.saveReport(to: url)
             } catch {
-                vm.status = "Błąd zapisu raportu: \(error.localizedDescription)"
+                exportError = error.localizedDescription
             }
         }
     }

@@ -8,5 +8,6 @@ struct MacCleanerProApp: App {
             ContentView()
         }
         .windowStyle(.titleBar)
+        .defaultSize(width: 1080, height: 690)
     }
 }

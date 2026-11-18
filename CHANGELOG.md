@@ -1,27 +1,17 @@
 # Changelog
 
-All notable changes to this project are documented in this file.
+## 3.1.0
 
-## [3.1.0] - 2026-03-19
+- Redesigned the macOS interface with native navigation, folder selection, scan options, searchable results, and a persistent selection bar.
+- Added English and Polish labels throughout the updated interface.
+- Fixed a crash when the same file appeared in multiple categories. The selected size counts each path once.
+- Limited automatic selection to extra copies in duplicate groups. Moving files to the Trash requires confirmation and reports partial failures.
+- Narrowed the app-leftover scan to bundle-like identifiers and excluded apps found in standard Applications folders.
+- Validated folder paths before scanning and kept exported reports tied to the last completed scan.
+- Made scanner tests portable and added coverage for scan history, report export, developer data, and cleanup safeguards.
+- Updated the app bundle version and signed the local build ad hoc before DMG packaging.
 
-### Added
-- Polish/English language switch in app UI.
-- Footer creator attribution.
-- Developer junk scanning section.
-- Scan history (last 30 snapshots).
-- Recommended cleanup selection.
-- Test suite for scanner core logic.
-- GitHub Actions CI and Release workflows.
-- README screenshots and known limitations section.
+## 3.0.0
 
-### Improved
-- Duplicate scanning stability and memory behavior.
-- Safety limits for large and candidate-heavy scans.
-
-## [3.0.0] - 2026-03-19
-
-### Added
-- Initial public release of MacCleaner Pro.
-- Native SwiftUI desktop app + DMG packaging.
-- Large file scanning, duplicate detection, leftovers scan.
-- Safe cleanup through Trash.
+- Initial public release with large-file, duplicate, and app-leftover scanning.
+- Added a SwiftUI interface and cleanup through the macOS Trash.
